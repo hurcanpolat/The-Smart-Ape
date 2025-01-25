@@ -1,0 +1,46 @@
+{
+    "channels": {
+      "NansenBot": {
+        "id": "@NansenBot",
+        "type": "walletTracker",
+        "metrics": ["smartMoneyBuys"],
+        "extractMethod": "walletTracker"
+      },
+      "solanapoolsnew": {
+        "id": "@solanapoolsnew",
+        "type": "liquidityTracker",
+        "metrics": ["tokenName", "ticker", "description", "securityScore"],
+        "extractMethod": "liquidityTracker"
+      },
+      "solearlytrending": {
+        "id": "@solearlytrending",
+        "type": "earlyTrending",
+        "metrics": ["earlyTrending"],
+        "extractMethod": "earlyTrending"
+      },
+      "solanadegenterminal": {
+        "id": "@solanadegenterminal",
+        "type": "hypeTracker",
+        "metrics": ["hype"],
+        "extractMethod": "hypeTracker"
+      },
+      "callAnalyser": {
+        "id": "@CallAnalyserSol",
+        "type": "callAnalyser",
+        "metrics": ["ticker", "totalCalls"],
+        "extractMethod": "callAnalyser"
+      },
+      "dididtrending": {
+        "id": "dididtrending",
+        "type": "dexscreener_hot",
+        "metrics": ["tokenName", "ticker", "dexscreenerHot"],
+        "extractMethod": "dexscreenerHot"
+      },
+      "solanahypee": {
+        "id": "@solanahypee",
+        "type": "volume_tracker",
+        "metrics": ["tokenName", "ticker", "highVolume"],
+        "extractMethod": "volumeTracker"
+      }
+    }
+  }
