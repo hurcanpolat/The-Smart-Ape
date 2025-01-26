@@ -45,8 +45,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             totalCalls INTEGER DEFAULT 0,
             dexscreenerHot TEXT DEFAULT 'NO',
             highVolume TEXT DEFAULT 'NO',
-            score INTEGER DEFAULT 0,
-            scoreTimeline TEXT DEFAULT '[]'  // JSON array of score events
+            score INTEGER DEFAULT 0
         )`);
 
         // Create trigger for score calculation
@@ -116,36 +115,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         ELSE 0
                     END
                 ) WHERE contractAddress = NEW.contractAddress;
-            END;
-        `);
-
-        // Add function to log score changes
-        db.run(`CREATE TRIGGER IF NOT EXISTS log_score_change
-            AFTER UPDATE ON tokens
-            FOR EACH ROW
-            WHEN NEW.score != OLD.score
-            BEGIN
-                UPDATE tokens SET scoreTimeline = (
-                    SELECT json(
-                        CASE 
-                            WHEN OLD.scoreTimeline IS NULL THEN '[]'
-                            ELSE OLD.scoreTimeline
-                        END || ' || ' ||
-                        json_array(
-                            json_object(
-                                'time', strftime('%H:%M', 'now', 'localtime'),
-                                'event', CASE
-                                    WHEN NEW.securityScore != OLD.securityScore THEN 'Security Score ' || NEW.securityScore
-                                    WHEN NEW.earlyTrending != OLD.earlyTrending THEN 'Early Trending'
-                                    WHEN NEW.hype != OLD.hype THEN 'Hype ' || NEW.hype
-                                    ELSE 'Score Update'
-                                END,
-                                'points', NEW.score - OLD.score
-                            )
-                        )
-                    )
-                )
-                WHERE contractAddress = NEW.contractAddress;
             END;
         `);
     });
