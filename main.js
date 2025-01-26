@@ -7,6 +7,7 @@ const path = require('path');
 const processedMessageIdsFile = 'processedMessageIds.json';
 const { db } = require('./db');
 const http = require('http');
+const https = require('https');
 
 dotenv.config();
 
@@ -75,8 +76,8 @@ async function processMessage(chatName, message) {
                     
                     console.log(`Got ${messages.length} messages from ${chatName}`);
                     
-                    // Process messages in chronological order (oldest first)
-                    for (const msg of messages.reverse()) {
+                    // Process messages in reverse chronological order (newest last)
+                    for (const msg of messages) {
                         if (msg?.text) {
                             await processMessage(chatName, msg);
                         }
@@ -407,3 +408,15 @@ const port = process.env.PORT || 3000;
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
+
+// Keep-alive ping to prevent spin-down
+const RENDER_URL = 'https://the-smart-ape.onrender.com';
+setInterval(() => {
+    https.get(RENDER_URL, (resp) => {
+        if (resp.statusCode === 200) {
+            console.log('Keep-alive ping successful');
+        }
+    }).on('error', (err) => {
+        console.error('Keep-alive ping failed:', err.message);
+    });
+}, 840000); // 14 minutes (Render spins down after 15 minutes of inactivity)
