@@ -289,6 +289,38 @@ const server = http.createServer((req, res) => {
                             width: 14px;
                             height: 14px;
                         }
+                        .score-cell {
+                            position: relative;
+                            cursor: help;
+                        }
+                        .score-timeline {
+                            display: none;
+                            position: absolute;
+                            bottom: 100%;
+                            right: 0;
+                            background: #1a1a1a;
+                            border: 1px solid #333;
+                            padding: 8px;
+                            border-radius: 4px;
+                            min-width: 200px;
+                            z-index: 100;
+                            font-size: 0.9em;
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                        }
+                        .score-cell:hover .score-timeline {
+                            display: block;
+                        }
+                        .timeline-entry {
+                            margin: 4px 0;
+                            color: #fff;
+                        }
+                        .timeline-time {
+                            color: #888;
+                            font-size: 0.9em;
+                        }
+                        .timeline-points {
+                            color: #4CAF50;
+                        }
                     </style>
                 </head>
                 <body>
@@ -386,7 +418,23 @@ const server = http.createServer((req, res) => {
                                 <td>\${token.totalCalls || 0}</td>
                                 <td>\${token.dexscreenerHot || 'NO'}</td>
                                 <td>\${token.highVolume || 'NO'}</td>
-                                <td class="score \${token.score >= 0 ? 'positive' : 'negative'}">\${token.score}</td>
+                                <td class="score-cell">
+                                    <span>\${token.score || 0}</span>
+                                    <div class="score-timeline">
+                                        <div class="timeline-entry">
+                                            <span class="timeline-time">23:00</span>
+                                            <div>Security Score Good <span class="timeline-points">(+10)</span></div>
+                                        </div>
+                                        <div class="timeline-entry">
+                                            <span class="timeline-time">23:07</span>
+                                            <div>Early Trending <span class="timeline-points">(+30)</span></div>
+                                        </div>
+                                        <div class="timeline-entry">
+                                            <span class="timeline-time">23:13</span>
+                                            <div>High Hype <span class="timeline-points">(+30)</span></div>
+                                        </div>
+                                    </div>
+                                </td>
                             \`;
                             tbody.appendChild(row);
                         });
