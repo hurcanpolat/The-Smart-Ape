@@ -38,6 +38,15 @@ function logError(context, error) {
     console.error('============');
 }
 
+// Add this helper function
+function logTelegramStatus(client) {
+    console.log('\n=== Telegram Client Status ===');
+    console.log('Connected:', client.connected);
+    console.log('Authorized:', client._authorized); // Note: internal property
+    console.log('Session Valid:', !!client.session.authKey);
+    console.log('============================\n');
+}
+
 async function processMessage(chatName, message) {
     if (!message || !message.text) return;
   
@@ -90,8 +99,12 @@ async function pollChannel(channel) {
         });
 
         console.log('Attempting to connect...');
-        await client.connect();
+        await client.start({
+            onError: (err) => console.error('Connection error:', err)
+        });
+        
         console.log('Initial connection successful');
+        logTelegramStatus(client);
 
         const isAuthorized = await client.isUserAuthorized();
         console.log('User authorization status:', isAuthorized);
@@ -101,20 +114,29 @@ async function pollChannel(channel) {
             process.exit(1);
         }
 
-        // Test channel access
+        // Test channel access with more logging
         console.log('\n=== Testing Channel Access ===');
         for (const [chatName, chatConfig] of Object.entries(config.channels)) {
             try {
-                console.log(`\nTesting access to ${chatName} (${chatConfig.id})`);
+                console.log(`\nAttempting to access ${chatName} (${chatConfig.id})`);
+                console.log('Channel config:', chatConfig);
+                
                 const entity = await client.getEntity(chatConfig.id);
+                console.log('Entity response:', entity);
+                
                 if (!entity) {
                     throw new Error('Entity not found');
                 }
                 console.log(`Successfully accessed ${chatName}:`, entity.id);
                 
-                // Test message fetch
+                // Test message fetch with more details
+                console.log(`Attempting to fetch messages from ${chatName}`);
                 const testMessages = await client.getMessages(entity, { limit: 1 });
-                console.log(`Test message fetch for ${chatName}: ${testMessages.length > 0 ? 'Success' : 'No messages'}`);
+                console.log(`Message fetch result:`, {
+                    success: testMessages.length > 0,
+                    messageCount: testMessages.length,
+                    sampleMessage: testMessages[0] ? 'Found' : 'None'
+                });
             } catch (error) {
                 logError(`Failed to access channel ${chatName}`, error);
             }
