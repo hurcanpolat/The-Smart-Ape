@@ -6,7 +6,6 @@ const dotenv = require('dotenv');
 const path = require('path');
 const processedMessageIdsFile = 'processedMessageIds.json';
 const { db } = require('./db');
-const { startBot } = require('./bot');
 const http = require('http');
 
 dotenv.config();
@@ -123,6 +122,3 @@ const port = process.env.PORT || 3000;
 server.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
-
-// Start the bot
-startBot().catch(console.error);
