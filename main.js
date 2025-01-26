@@ -251,6 +251,16 @@ const server = http.createServer((req, res) => {
                             content: '↓';
                             opacity: 1;
                         }
+                        th small {
+                            display: block;
+                            font-weight: normal;
+                            color: #666;
+                            font-size: 0.8em;
+                        }
+                        th {
+                            min-width: 100px;
+                            padding: 8px 4px;
+                        }
                     </style>
                 </head>
                 <body>
@@ -262,15 +272,14 @@ const server = http.createServer((req, res) => {
                                 <tr>
                                     <th class="sortable" data-sort="tokenName">Token Name</th>
                                     <th class="sortable" data-sort="ticker">Ticker</th>
-                                    <th class="sortable" data-sort="contractAddress">Contract Address</th>
-                                    <th class="sortable" data-sort="securityScore">Security Score</th>
-                                    <th class="sortable" data-sort="smartMoneyBuys">Smart Money Buys</th>
-                                    <th class="sortable" data-sort="earlyTrending">Early Trending</th>
-                                    <th class="sortable" data-sort="hype">Hype</th>
-                                    <th class="sortable" data-sort="totalCalls">Total Calls</th>
-                                    <th class="sortable" data-sort="dexscreenerHot">Dexscreener Hot</th>
-                                    <th class="sortable" data-sort="highVolume">High Volume</th>
-                                    <th class="sortable" data-sort="score">Score</th>
+                                    <th class="sortable" data-sort="securityScore">Security Score<br><small>(Good: +10, Bad: -30)</small></th>
+                                    <th class="sortable" data-sort="smartMoneyBuys">Smart Money Buys<br><small>(+20 each)</small></th>
+                                    <th class="sortable" data-sort="earlyTrending">Early Trending<br><small>(+30 if YES)</small></th>
+                                    <th class="sortable" data-sort="hype">Hype<br><small>(High: +30, Med: +20, Small: +10)</small></th>
+                                    <th class="sortable" data-sort="totalCalls">Total Calls<br><small>(+10 each)</small></th>
+                                    <th class="sortable" data-sort="dexscreenerHot">Dexscreener Hot<br><small>(+20 if YES)</small></th>
+                                    <th class="sortable" data-sort="highVolume">High Volume<br><small>(+10 if YES)</small></th>
+                                    <th class="sortable" data-sort="score">Total Score</th>
                                 </tr>
                                 <tr class="filter-row">
                                     <th><input class="filter-input" data-column="tokenName" placeholder="Filter..."></th>
@@ -332,7 +341,6 @@ const server = http.createServer((req, res) => {
                             row.innerHTML = \`
                                 <td>\${token.tokenName || 'N/A'}</td>
                                 <td>\${token.ticker || 'N/A'}</td>
-                                <td>\${token.contractAddress || 'N/A'}</td>
                                 <td>\${token.securityScore || 'N/A'}</td>
                                 <td>\${token.smartMoneyBuys || 0}</td>
                                 <td>\${token.earlyTrending || 'NO'}</td>

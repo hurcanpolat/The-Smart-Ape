@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3').verbose();
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
+const { calculateScore } = require('./scoring');
 
 dotenv.config();
 
@@ -70,7 +71,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         WHEN NEW.hype = 'Small' THEN 10
                         ELSE 0
                     END +
-                    COALESCE(NEW.totalCalls * 20, 0) +
+                    COALESCE(NEW.totalCalls * 10, 0) +
                     CASE 
                         WHEN NEW.dexscreenerHot = 'YES' THEN 20
                         ELSE 0
@@ -141,25 +142,36 @@ async function processQueue() {
     }
 }
 
-function queueUpdate(query, params, retryCount = 0) {
-    const MAX_RETRIES = 3;
-    updateQueue.push({ query, params, retryCount });
-    
+function queueUpdate(query, params) {
+    updateQueue.push({ query, params });
     if (!isProcessing) {
-        processQueue().catch(error => {
-            if (retryCount < MAX_RETRIES) {
-                console.log(`Retrying update, attempt ${retryCount + 1}`);
-                setTimeout(() => {
-                    queueUpdate(query, params, retryCount + 1);
-                }, 1000 * Math.pow(2, retryCount));
-            } else {
-                console.error('Max retries reached for update:', { query, params });
-            }
-        });
+        processQueue();
     }
+}
+
+// Update the token's score whenever any metric changes
+function updateTokenScore(contractAddress) {
+    db.get(
+        'SELECT * FROM tokens WHERE contractAddress = ?',
+        [contractAddress],
+        (err, token) => {
+            if (err) {
+                console.error('Error fetching token for score update:', err);
+                return;
+            }
+            if (token) {
+                const score = calculateScore(token);
+                queueUpdate(
+                    'UPDATE tokens SET score = ? WHERE contractAddress = ?',
+                    [score, contractAddress]
+                );
+            }
+        }
+    );
 }
 
 module.exports = {
     db,
-    queueUpdate
+    queueUpdate,
+    updateTokenScore
 }; 
