@@ -80,10 +80,12 @@ async function pollChannel(channel) {
 
             setInterval(async () => {
                 try {
+                    console.log(`Polling ${chatName}...`);
                     const messages = await client.getMessages(chatConfig.id, { limit: 5 });
                     console.log(`Fetched ${messages.length} messages from ${chatName}`);
                     for (const msg of messages) {
                         if (msg && msg.text) {
+                            console.log(`Processing message from ${chatName}: ${msg.text.substring(0, 50)}...`);
                             await processMessage(chatName, msg);
                         }
                     }
@@ -128,6 +130,47 @@ const server = http.createServer((req, res) => {
                 console.log('Sending tokens data, count:', rows.length);
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify(rows));
+            });
+        } else if (req.url === '/api/import' && req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+                body += chunk.toString();
+            });
+            req.on('end', () => {
+                try {
+                    const tokens = JSON.parse(body);
+                    const stmt = db.prepare(`
+                        INSERT OR REPLACE INTO tokens (
+                            contractAddress, tokenName, ticker, description,
+                            securityScore, smartMoneyBuys, earlyTrending,
+                            hype, totalCalls, dexscreenerHot, highVolume
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `);
+                    
+                    tokens.forEach(token => {
+                        stmt.run([
+                            token.contractAddress,
+                            token.tokenName,
+                            token.ticker,
+                            token.description,
+                            token.securityScore,
+                            token.smartMoneyBuys,
+                            token.earlyTrending,
+                            token.hype,
+                            token.totalCalls,
+                            token.dexscreenerHot,
+                            token.highVolume
+                        ]);
+                    });
+                    
+                    stmt.finalize();
+                    res.writeHead(200);
+                    res.end('Data imported successfully');
+                } catch (error) {
+                    console.error('Import error:', error);
+                    res.writeHead(500);
+                    res.end('Import failed');
+                }
             });
         } else if (req.url === '/' || req.url === '') {
             console.log('Serving HTML dashboard');
