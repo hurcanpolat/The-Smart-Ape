@@ -79,7 +79,7 @@ async function pollChannel(channel) {
     }
 }
 
-// Modify the Telegram client setup
+// Modify the client setup section
 (async () => {
     console.log('=== Starting Application ===');
     console.log('API ID:', apiId ? 'Set' : 'Not set');
@@ -91,110 +91,82 @@ async function pollChannel(channel) {
             connectionRetries: 5,
             retryDelay: 2000,
             useWSS: false,
-            maxConcurrentDownloads: 1,
             deviceModel: 'Desktop',
             systemVersion: 'Windows 10',
             appVersion: '1.0.0',
             baseLogger: console
         });
 
-        console.log('Attempting to connect...');
-        await client.start({
-            onError: (err) => console.error('Connection error:', err)
-        });
-        
-        console.log('Initial connection successful');
-        logTelegramStatus(client);
+        // Modified connection approach
+        await client.connect();
+        console.log('Connected to Telegram');
 
-        const isAuthorized = await client.isUserAuthorized();
-        console.log('User authorization status:', isAuthorized);
-
-        if (!isAuthorized) {
-            console.error('User not authorized - need to generate new session string');
+        // Test a simple API call
+        try {
+            const me = await client.getMe();
+            console.log('Successfully got self user:', me.username);
+        } catch (error) {
+            console.error('Failed to get self user:', error);
             process.exit(1);
         }
 
-        // Test channel access with more logging
-        console.log('\n=== Testing Channel Access ===');
+        // Test each channel individually
         for (const [chatName, chatConfig] of Object.entries(config.channels)) {
             try {
-                console.log(`\nAttempting to access ${chatName} (${chatConfig.id})`);
-                console.log('Channel config:', chatConfig);
+                console.log(`\nTesting ${chatName}...`);
                 
-                const entity = await client.getEntity(chatConfig.id);
-                console.log('Entity response:', entity);
+                // Try to resolve the channel username first
+                const channelId = chatConfig.id.startsWith('@') ? 
+                    chatConfig.id.substring(1) : chatConfig.id;
                 
-                if (!entity) {
-                    throw new Error('Entity not found');
+                console.log(`Resolving ${channelId}...`);
+                const entity = await client.getInputEntity(channelId);
+                console.log(`Resolved ${chatName} to:`, entity);
+
+                // Try to get messages
+                const messages = await client.getMessages(entity, { limit: 1 });
+                console.log(`Got ${messages.length} messages from ${chatName}`);
+                
+                if (messages.length > 0) {
+                    console.log('Sample message:', messages[0].text?.substring(0, 100));
                 }
-                console.log(`Successfully accessed ${chatName}:`, entity.id);
-                
-                // Test message fetch with more details
-                console.log(`Attempting to fetch messages from ${chatName}`);
-                const testMessages = await client.getMessages(entity, { limit: 1 });
-                console.log(`Message fetch result:`, {
-                    success: testMessages.length > 0,
-                    messageCount: testMessages.length,
-                    sampleMessage: testMessages[0] ? 'Found' : 'None'
-                });
             } catch (error) {
-                logError(`Failed to access channel ${chatName}`, error);
+                console.error(`Failed to access ${chatName}:`, error);
             }
         }
 
-        // Modified polling setup with better error handling
+        // Set up polling with more logging
         Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
             const pollInterval = 30000;
             const staggerDelay = index * 2000;
 
-            console.log(`Setting up polling for ${chatName} with interval: ${pollInterval + staggerDelay}ms`);
-
+            console.log(`Setting up polling for ${chatName}`);
+            
             setInterval(async () => {
                 try {
-                    if (!client.connected) {
-                        console.log('Client disconnected, attempting to reconnect...');
-                        await client.connect();
-                    }
-
-                    console.log(`\n=== Polling ${chatName} ===`);
-                    const entity = await client.getEntity(chatConfig.id);
-                    if (!entity) {
-                        throw new Error(`Could not get entity for ${chatName}`);
-                    }
-
-                    const messages = await client.getMessages(entity, { 
-                        limit: 5,
-                        offsetId: 0
-                    });
+                    console.log(`\nPolling ${chatName}...`);
+                    const channelId = chatConfig.id.startsWith('@') ? 
+                        chatConfig.id.substring(1) : chatConfig.id;
                     
-                    if (!messages || messages.length === 0) {
-                        console.log(`No messages found for ${chatName}`);
-                        return;
-                    }
-
-                    console.log(`Found ${messages.length} messages from ${chatName}`);
+                    const entity = await client.getInputEntity(channelId);
+                    const messages = await client.getMessages(entity, { limit: 5 });
+                    
+                    console.log(`Got ${messages.length} messages from ${chatName}`);
                     
                     for (const msg of messages) {
-                        if (!msg || !msg.text) continue;
-                        
-                        console.log(`\nProcessing message from ${chatName}:`);
-                        console.log('Text preview:', msg.text.substring(0, 100));
-                        
-                        try {
+                        if (msg?.text) {
+                            console.log(`Processing message: ${msg.text.substring(0, 50)}...`);
                             await processMessage(chatName, msg);
-                            console.log('Message processed successfully');
-                        } catch (error) {
-                            logError(`Error processing message from ${chatName}`, error);
                         }
                     }
                 } catch (error) {
-                    logError(`Error polling ${chatName}`, error);
+                    console.error(`Error polling ${chatName}:`, error);
                 }
             }, pollInterval + staggerDelay);
         });
 
     } catch (error) {
-        logError('Fatal error in main process', error);
+        console.error('Fatal error:', error);
         process.exit(1);
     }
 })();
