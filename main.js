@@ -24,77 +24,10 @@ for (const [channelName, channelConfig] of Object.entries(config.channels)) {
     }
 }
 
-// Minimal configuration - just one channel to test
-const TEST_CHANNEL = '@NansenBot';
-
-// Simple error logging
-function logError(context, error) {
-    console.error(`=== ERROR: ${context} ===`);
-    console.error(error);
-    console.error('===================\n');
-}
-
-// Add this helper function
-function logTelegramStatus(client) {
-    console.log('\n=== Telegram Client Status ===');
-    console.log('Connected:', client.connected);
-    console.log('Authorized:', client._authorized); // Note: internal property
-    console.log('Session Valid:', !!client.session.authKey);
-    console.log('============================\n');
-}
-
-async function processMessage(chatName, message) {
-    if (!message || !message.text) return;
-  
-    const chatConfig = config.channels[chatName];
-    if (!chatConfig) return;
-
-    try {
-        const channelProcessor = channelModules[chatName]?.processMessage;
-        if (channelProcessor) {
-            await channelProcessor(message);
-        } else {
-            console.warn(`No processor found for ${chatName}`);
-        }
-    } catch (error) {
-        console.error(`Error processing message for ${chatName}:`, error);
-    }
-}
-
-async function pollChannel(channel) {
-    try {
-        const messages = await fetchMessages(channel.id, 5);
-        console.log(`Processing ${channel.type} updates...`);
-        
-        // Process messages without the extra logging
-        for (const message of messages) {
-            await processMessage(channel.name, message);
-        }
-    } catch (error) {
-        console.error(`Error polling ${channel.type}:`, error);
-    }
-}
-
-// Debug client setup
+// Client setup
 (async () => {
-    console.log('\n=== Debug Information ===');
-    const apiId = parseInt(process.env.TELEGRAM_API_ID);
-    const apiHash = process.env.TELEGRAM_API_HASH;
-    
-    // Add detailed session logging
-    console.log('\n=== Session Debug ===');
-    console.log('Raw session string:', process.env.TELEGRAM_STRING_SESSION);
-    console.log('Session string type:', typeof process.env.TELEGRAM_STRING_SESSION);
-    console.log('Session string length:', process.env.TELEGRAM_STRING_SESSION?.length);
-    
     const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
-    console.log('Initialized session length:', stringSession?.length || 'Not set');
 
-    // Rest of your existing debug logs
-    console.log('\n=== Credential Lengths ===');
-    console.log('API ID Length:', apiId?.toString().length || 'Not set');
-    console.log('API Hash Length:', apiHash?.length || 'Not set');
-    
     try {
         const client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
@@ -103,10 +36,8 @@ async function pollChannel(channel) {
         });
 
         await client.connect();
-        console.log('Connected to Telegram');
-        
+
         const isAuthorized = await client.isUserAuthorized();
-        console.log('User Authorized:', isAuthorized);
 
         if (!isAuthorized) {
             throw new Error('Not authorized');
@@ -270,6 +201,36 @@ const server = http.createServer((req, res) => {
                         .refresh-btn:hover {
                             background: #45a049;
                         }
+                        .filter-row th {
+                            padding: 5px;
+                        }
+                        
+                        .filter-input {
+                            width: 90%;
+                            padding: 5px;
+                            border: 1px solid #ddd;
+                            border-radius: 4px;
+                        }
+                        
+                        th.sortable {
+                            cursor: pointer;
+                        }
+                        
+                        th.sortable:after {
+                            content: '↕';
+                            margin-left: 5px;
+                            opacity: 0.5;
+                        }
+                        
+                        th.sorted-asc:after {
+                            content: '↑';
+                            opacity: 1;
+                        }
+                        
+                        th.sorted-desc:after {
+                            content: '↓';
+                            opacity: 1;
+                        }
                     </style>
                 </head>
                 <body>
@@ -279,51 +240,133 @@ const server = http.createServer((req, res) => {
                         <table id="tokenTable">
                             <thead>
                                 <tr>
-                                    <th>Token Name</th>
-                                    <th>Ticker</th>
-                                    <th>Security Score</th>
-                                    <th>Smart Money Buys</th>
-                                    <th>Early Trending</th>
-                                    <th>Hype</th>
-                                    <th>Total Calls</th>
-                                    <th>Dexscreener Hot</th>
-                                    <th>High Volume</th>
-                                    <th>Score</th>
+                                    <th class="sortable" data-sort="tokenName">Token Name</th>
+                                    <th class="sortable" data-sort="ticker">Ticker</th>
+                                    <th class="sortable" data-sort="contractAddress">Contract Address</th>
+                                    <th class="sortable" data-sort="securityScore">Security Score</th>
+                                    <th class="sortable" data-sort="smartMoneyBuys">Smart Money Buys</th>
+                                    <th class="sortable" data-sort="earlyTrending">Early Trending</th>
+                                    <th class="sortable" data-sort="hype">Hype</th>
+                                    <th class="sortable" data-sort="totalCalls">Total Calls</th>
+                                    <th class="sortable" data-sort="dexscreenerHot">Dexscreener Hot</th>
+                                    <th class="sortable" data-sort="highVolume">High Volume</th>
+                                    <th class="sortable" data-sort="score">Score</th>
+                                </tr>
+                                <tr class="filter-row">
+                                    <th><input class="filter-input" data-column="tokenName" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="ticker" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="contractAddress" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="securityScore" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="smartMoneyBuys" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="earlyTrending" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="hype" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="totalCalls" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="dexscreenerHot" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="highVolume" placeholder="Filter..."></th>
+                                    <th><input class="filter-input" data-column="score" placeholder="Filter..."></th>
                                 </tr>
                             </thead>
                             <tbody id="tokenTableBody"></tbody>
                         </table>
                     </div>
                     <script>
-                        function refreshData() {
-                            fetch('/api/tokens')
-                                .then(response => response.json())
-                                .then(data => {
-                                    const tbody = document.getElementById('tokenTableBody');
-                                    tbody.innerHTML = '';
-                                    data.forEach(token => {
-                                        const row = document.createElement('tr');
-                                        row.innerHTML = \`
-                                            <td>\${token.tokenName || 'N/A'}</td>
-                                            <td>\${token.ticker || 'N/A'}</td>
-                                            <td>\${token.securityScore || 'N/A'}</td>
-                                            <td>\${token.smartMoneyBuys || 0}</td>
-                                            <td>\${token.earlyTrending || 'NO'}</td>
-                                            <td>\${token.hype || 'None'}</td>
-                                            <td>\${token.totalCalls || 0}</td>
-                                            <td>\${token.dexscreenerHot || 'NO'}</td>
-                                            <td>\${token.highVolume || 'NO'}</td>
-                                            <td class="score \${token.score >= 0 ? 'positive' : 'negative'}">\${token.score}</td>
-                                        \`;
-                                        tbody.appendChild(row);
-                                    });
-                                })
-                                .catch(error => console.error('Error:', error));
-                        }
-                        // Initial load
-                        refreshData();
-                        // Refresh every 30 seconds
-                        setInterval(refreshData, 30000);
+                    let allTokens = [];
+                    let currentSort = { column: 'score', direction: 'desc' };
+                    let filters = {};
+
+                    function applyFiltersAndSort() {
+                        let filtered = allTokens.filter(token => {
+                            return Object.entries(filters).every(([column, value]) => {
+                                if (!value) return true;
+                                let tokenValue = String(token[column] || '').toLowerCase();
+                                return tokenValue.includes(value.toLowerCase());
+                            });
+                        });
+
+                        filtered.sort((a, b) => {
+                            let aVal = a[currentSort.column] || '';
+                            let bVal = b[currentSort.column] || '';
+                            
+                            if (typeof aVal === 'number' && typeof bVal === 'number') {
+                                return currentSort.direction === 'asc' ? aVal - bVal : bVal - aVal;
+                            }
+                            
+                            aVal = String(aVal).toLowerCase();
+                            bVal = String(bVal).toLowerCase();
+                            
+                            if (currentSort.direction === 'asc') {
+                                return aVal.localeCompare(bVal);
+                            } else {
+                                return bVal.localeCompare(aVal);
+                            }
+                        });
+
+                        updateTable(filtered);
+                    }
+
+                    function updateTable(data) {
+                        const tbody = document.getElementById('tokenTableBody');
+                        tbody.innerHTML = '';
+                        data.forEach(token => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = \`
+                                <td>\${token.tokenName || 'N/A'}</td>
+                                <td>\${token.ticker || 'N/A'}</td>
+                                <td>\${token.contractAddress || 'N/A'}</td>
+                                <td>\${token.securityScore || 'N/A'}</td>
+                                <td>\${token.smartMoneyBuys || 0}</td>
+                                <td>\${token.earlyTrending || 'NO'}</td>
+                                <td>\${token.hype || 'None'}</td>
+                                <td>\${token.totalCalls || 0}</td>
+                                <td>\${token.dexscreenerHot || 'NO'}</td>
+                                <td>\${token.highVolume || 'NO'}</td>
+                                <td class="score \${token.score >= 0 ? 'positive' : 'negative'}">\${token.score}</td>
+                            \`;
+                            tbody.appendChild(row);
+                        });
+                    }
+
+                    // Set up event listeners
+                    document.querySelectorAll('.sortable').forEach(th => {
+                        th.addEventListener('click', () => {
+                            const column = th.dataset.sort;
+                            if (currentSort.column === column) {
+                                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+                            } else {
+                                currentSort = { column, direction: 'asc' };
+                            }
+                            
+                            // Update sort indicators
+                            document.querySelectorAll('.sortable').forEach(el => {
+                                el.classList.remove('sorted-asc', 'sorted-desc');
+                            });
+                            th.classList.add(\`sorted-\${currentSort.direction}\`);
+                            
+                            applyFiltersAndSort();
+                        });
+                    });
+
+                    document.querySelectorAll('.filter-input').forEach(input => {
+                        input.addEventListener('input', () => {
+                            filters[input.dataset.column] = input.value;
+                            applyFiltersAndSort();
+                        });
+                    });
+
+                    function refreshData() {
+                        fetch('/api/tokens')
+                            .then(response => response.json())
+                            .then(data => {
+                                allTokens = data;
+                                applyFiltersAndSort();
+                            })
+                            .catch(error => console.error('Error:', error));
+                    }
+
+                    // Initial load
+                    refreshData();
+                    // Refresh every 30 seconds
+                    setInterval(refreshData, 30000);
                     </script>
                 </body>
                 </html>
