@@ -125,8 +125,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
             FOR EACH ROW
             WHEN NEW.score != OLD.score
             BEGIN
-                UPDATE tokens SET scoreTimeline = json_array_append(
+                UPDATE tokens SET scoreTimeline = json_insert(
                     COALESCE(OLD.scoreTimeline, '[]'),
+                    '$[' || json_array_length(COALESCE(OLD.scoreTimeline, '[]')) || ']',
                     json_object(
                         'time', strftime('%H:%M', 'now', 'localtime'),
                         'event', CASE
