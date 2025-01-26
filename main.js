@@ -80,12 +80,21 @@ async function pollChannel(channel) {
     console.log('\n=== Debug Information ===');
     const apiId = parseInt(process.env.TELEGRAM_API_ID);
     const apiHash = process.env.TELEGRAM_API_HASH;
-    const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION);
+    
+    // Add detailed session logging
+    console.log('\n=== Session Debug ===');
+    console.log('Raw session string:', process.env.TELEGRAM_STRING_SESSION);
+    console.log('Session string type:', typeof process.env.TELEGRAM_STRING_SESSION);
+    console.log('Session string length:', process.env.TELEGRAM_STRING_SESSION?.length);
+    
+    const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
+    console.log('Initialized session length:', stringSession?.length || 'Not set');
 
+    // Rest of your existing debug logs
+    console.log('\n=== Credential Lengths ===');
     console.log('API ID Length:', apiId?.toString().length || 'Not set');
     console.log('API Hash Length:', apiHash?.length || 'Not set');
-    console.log('Session String Length:', stringSession?.length || 'Not set');
-
+    
     try {
         const client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 1,
