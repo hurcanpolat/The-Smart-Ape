@@ -267,18 +267,27 @@ const server = http.createServer((req, res) => {
                             overflow: hidden;
                             text-overflow: ellipsis;
                             white-space: nowrap;
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
                         }
                         .copy-btn {
-                            padding: 2px 6px;
+                            padding: 4px;
                             background: #444;
                             border: none;
                             border-radius: 3px;
                             color: white;
                             cursor: pointer;
-                            font-size: 0.8em;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
                         }
                         .copy-btn:hover {
                             background: #666;
+                        }
+                        .copy-icon {
+                            width: 14px;
+                            height: 14px;
                         }
                     </style>
                 </head>
@@ -362,8 +371,13 @@ const server = http.createServer((req, res) => {
                                 <td>\${token.tokenName || 'N/A'}</td>
                                 <td>\${token.ticker || 'N/A'}</td>
                                 <td class="ca-cell">
-                                    <span title="\${token.contractAddress}">\${token.contractAddress?.slice(0, 8)}...</span>
-                                    <button class="copy-btn" onclick="copyCA('\${token.contractAddress}')">Copy</button>
+                                    <span title="\${token.contractAddress}">\${token.contractAddress?.slice(0, 8)}</span>
+                                    <button class="copy-btn" onclick="copyCA('\${token.contractAddress}')" title="Copy address">
+                                        <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                    </button>
                                 </td>
                                 <td>\${token.securityScore || 'N/A'}</td>
                                 <td>\${token.smartMoneyBuys || 0}</td>
