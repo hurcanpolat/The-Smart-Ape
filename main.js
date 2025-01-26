@@ -6,6 +6,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const processedMessageIdsFile = 'processedMessageIds.json';
 const { db } = require('./db');
+const { startBot } = require('./bot');
+const http = require('http');
 
 dotenv.config();
 
@@ -109,3 +111,18 @@ process.on('SIGINT', () => {
         process.exit(0);
     });
 });
+
+// Add a simple web server
+const server = http.createServer((req, res) => {
+    res.writeHead(200);
+    res.end('Bot is running!');
+});
+
+// Listen on the port provided by Render or default to 3000
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+});
+
+// Start the bot
+startBot().catch(console.error);
