@@ -272,6 +272,7 @@ const server = http.createServer((req, res) => {
                                 <tr>
                                     <th class="sortable" data-sort="tokenName">Token Name</th>
                                     <th class="sortable" data-sort="ticker">Ticker</th>
+                                    <th class="sortable" data-sort="contractAddress">Contract Address</th>
                                     <th class="sortable" data-sort="securityScore">Security Score<br><small>(Good: +10, Bad: -30)</small></th>
                                     <th class="sortable" data-sort="smartMoneyBuys">Smart Money Buys<br><small>(+20 each)</small></th>
                                     <th class="sortable" data-sort="earlyTrending">Early Trending<br><small>(+30 if YES)</small></th>
@@ -341,6 +342,7 @@ const server = http.createServer((req, res) => {
                             row.innerHTML = \`
                                 <td>\${token.tokenName || 'N/A'}</td>
                                 <td>\${token.ticker || 'N/A'}</td>
+                                <td>\${token.contractAddress || 'N/A'}</td>
                                 <td>\${token.securityScore || 'N/A'}</td>
                                 <td>\${token.smartMoneyBuys || 0}</td>
                                 <td>\${token.earlyTrending || 'NO'}</td>
