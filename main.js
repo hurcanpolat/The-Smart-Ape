@@ -29,6 +29,15 @@ const apiId = parseInt(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH;
 const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
 
+// Add this function for better error logging
+function logError(context, error) {
+    console.error('=== ERROR ===');
+    console.error('Context:', context);
+    console.error('Message:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('============');
+}
+
 async function processMessage(chatName, message) {
     if (!message || !message.text) return;
   
@@ -61,41 +70,84 @@ async function pollChannel(channel) {
     }
 }
 
-// Start the Telegram client and message polling
+// Modify the Telegram client setup
 (async () => {
-    console.log('Starting Telegram client...');
+    console.log('=== Starting Application ===');
+    console.log('API ID:', apiId ? 'Set' : 'Not set');
+    console.log('API Hash:', apiHash ? 'Set' : 'Not set');
+    console.log('Session:', stringSession ? 'Set' : 'Not set');
+    
     try {
         const client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
-            retryDelay: 2000
+            retryDelay: 2000,
+            useWSS: true,
+            logger: console
         });
 
-        await client.start();
-        console.log('Connected to Telegram.');
+        await client.connect();
+        console.log('Initial connection successful');
 
-        // Add staggered polling for each channel
+        const isAuthorized = await client.isUserAuthorized();
+        console.log('User authorization status:', isAuthorized);
+
+        if (!isAuthorized) {
+            console.error('User not authorized - need to generate new session string');
+            process.exit(1);
+        }
+
+        // Test channel access
+        for (const [chatName, chatConfig] of Object.entries(config.channels)) {
+            try {
+                console.log(`Testing access to ${chatName} (${chatConfig.id})`);
+                const entity = await client.getEntity(chatConfig.id);
+                console.log(`Successfully accessed ${chatName}:`, entity.id);
+            } catch (error) {
+                logError(`Failed to access channel ${chatName}`, error);
+            }
+        }
+
+        // Modified polling setup
         Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
-            const pollInterval = 30000; // 30 seconds
-            const staggerDelay = index * 2000; // Stagger by 2 seconds per channel
+            const pollInterval = 30000;
+            const staggerDelay = index * 2000;
 
             setInterval(async () => {
                 try {
-                    console.log(`Polling ${chatName}...`);
-                    const messages = await client.getMessages(chatConfig.id, { limit: 5 });
-                    console.log(`Fetched ${messages.length} messages from ${chatName}`);
+                    console.log(`\n=== Polling ${chatName} ===`);
+                    const messages = await client.getMessages(chatConfig.id, { 
+                        limit: 5,
+                        offsetId: 0
+                    });
+                    
+                    if (!messages || messages.length === 0) {
+                        console.log(`No messages found for ${chatName}`);
+                        return;
+                    }
+
+                    console.log(`Found ${messages.length} messages from ${chatName}`);
+                    
                     for (const msg of messages) {
-                        if (msg && msg.text) {
-                            console.log(`Processing message from ${chatName}: ${msg.text.substring(0, 50)}...`);
+                        if (!msg || !msg.text) continue;
+                        
+                        console.log(`\nProcessing message from ${chatName}:`);
+                        console.log('Text preview:', msg.text.substring(0, 100));
+                        
+                        try {
                             await processMessage(chatName, msg);
+                            console.log('Message processed successfully');
+                        } catch (error) {
+                            logError(`Error processing message from ${chatName}`, error);
                         }
                     }
                 } catch (error) {
-                    console.error(`Error fetching messages for ${chatName}:`, error);
+                    logError(`Error polling ${chatName}`, error);
                 }
             }, pollInterval + staggerDelay);
         });
+
     } catch (error) {
-        console.error('Fatal error:', error);
+        logError('Fatal error in main process', error);
         process.exit(1);
     }
 })();
