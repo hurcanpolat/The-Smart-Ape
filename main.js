@@ -191,6 +191,7 @@ const server = http.createServer((req, res) => {
                             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
                             border-radius: 8px;
                             overflow: hidden;
+                            table-layout: fixed;
                         }
                         th, td {
                             padding: 12px;
@@ -261,6 +262,24 @@ const server = http.createServer((req, res) => {
                             min-width: 100px;
                             padding: 8px 4px;
                         }
+                        .ca-cell {
+                            max-width: 100px;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                        }
+                        .copy-btn {
+                            padding: 2px 6px;
+                            background: #444;
+                            border: none;
+                            border-radius: 3px;
+                            color: white;
+                            cursor: pointer;
+                            font-size: 0.8em;
+                        }
+                        .copy-btn:hover {
+                            background: #666;
+                        }
                     </style>
                 </head>
                 <body>
@@ -270,17 +289,17 @@ const server = http.createServer((req, res) => {
                         <table id="tokenTable">
                             <thead>
                                 <tr>
-                                    <th class="sortable" data-sort="tokenName">Token Name</th>
-                                    <th class="sortable" data-sort="ticker">Ticker</th>
-                                    <th class="sortable" data-sort="contractAddress">Contract Address</th>
-                                    <th class="sortable" data-sort="securityScore">Security Score<br><small>(Good: +10, Bad: -30)</small></th>
-                                    <th class="sortable" data-sort="smartMoneyBuys">Smart Money Buys<br><small>(+20 each)</small></th>
-                                    <th class="sortable" data-sort="earlyTrending">Early Trending<br><small>(+30 if YES)</small></th>
-                                    <th class="sortable" data-sort="hype">Hype<br><small>(High: +30, Med: +20, Small: +10)</small></th>
-                                    <th class="sortable" data-sort="totalCalls">Total Calls<br><small>(+10 each)</small></th>
-                                    <th class="sortable" data-sort="dexscreenerHot">Dexscreener Hot<br><small>(+20 if YES)</small></th>
-                                    <th class="sortable" data-sort="highVolume">High Volume<br><small>(+10 if YES)</small></th>
-                                    <th class="sortable" data-sort="score">Total Score</th>
+                                    <th class="sortable" data-sort="tokenName" style="width: 12%">Token Name</th>
+                                    <th class="sortable" data-sort="ticker" style="width: 8%">Ticker</th>
+                                    <th class="sortable" data-sort="contractAddress" style="width: 12%">CA</th>
+                                    <th class="sortable" data-sort="securityScore" style="width: 10%">Security Score<br><small>(Good: +10, Bad: -30)</small></th>
+                                    <th class="sortable" data-sort="smartMoneyBuys" style="width: 10%">Smart Money<br><small>(+20 each)</small></th>
+                                    <th class="sortable" data-sort="earlyTrending" style="width: 8%">Trending<br><small>(+30)</small></th>
+                                    <th class="sortable" data-sort="hype" style="width: 10%">Hype<br><small>(30/20/10)</small></th>
+                                    <th class="sortable" data-sort="totalCalls" style="width: 8%">Calls<br><small>(+10)</small></th>
+                                    <th class="sortable" data-sort="dexscreenerHot" style="width: 8%">Hot<br><small>(+20)</small></th>
+                                    <th class="sortable" data-sort="highVolume" style="width: 8%">Volume<br><small>(+10)</small></th>
+                                    <th class="sortable" data-sort="score" style="width: 6%">Score</th>
                                 </tr>
                                 <tr class="filter-row">
                                     <th><input class="filter-input" data-column="tokenName" placeholder="Filter..."></th>
@@ -342,7 +361,10 @@ const server = http.createServer((req, res) => {
                             row.innerHTML = \`
                                 <td>\${token.tokenName || 'N/A'}</td>
                                 <td>\${token.ticker || 'N/A'}</td>
-                                <td>\${token.contractAddress || 'N/A'}</td>
+                                <td class="ca-cell">
+                                    <span title="\${token.contractAddress}">\${token.contractAddress?.slice(0, 8)}...</span>
+                                    <button class="copy-btn" onclick="copyCA('\${token.contractAddress}')">Copy</button>
+                                </td>
                                 <td>\${token.securityScore || 'N/A'}</td>
                                 <td>\${token.smartMoneyBuys || 0}</td>
                                 <td>\${token.earlyTrending || 'NO'}</td>
@@ -397,6 +419,14 @@ const server = http.createServer((req, res) => {
                     refreshData();
                     // Refresh every 30 seconds
                     setInterval(refreshData, 30000);
+
+                    function copyCA(address) {
+                        navigator.clipboard.writeText(address);
+                        // Optional: Show feedback
+                        const btn = event.target;
+                        btn.textContent = 'Copied!';
+                        setTimeout(() => btn.textContent = 'Copy', 1000);
+                    }
                     </script>
                 </body>
                 </html>
