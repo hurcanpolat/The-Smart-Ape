@@ -10,97 +10,100 @@ let isProcessing = false;
 const db = new sqlite3.Database(process.env.DB_PATH || 'tokens.db', (err) => {
     if (err) console.error('Database connection error:', err);
     else console.log('Connected to the database.');
-});
 
-db.serialize(() => {
-    db.run('PRAGMA journal_mode=WAL');
-    db.run('PRAGMA synchronous=NORMAL');
-    db.run('PRAGMA busy_timeout=5000');
-    
-    db.run(`CREATE TABLE IF NOT EXISTS tokens (
-        contractAddress TEXT PRIMARY KEY,
-        tokenName TEXT,
-        ticker TEXT,
-        description TEXT,
-        securityScore TEXT,
-        smartMoneyBuys INTEGER DEFAULT 0,
-        earlyTrending TEXT DEFAULT 'NO',
-        hype TEXT DEFAULT 'None',
-        totalCalls INTEGER DEFAULT 0,
-        dexscreenerHot TEXT DEFAULT 'NO',
-        highVolume TEXT DEFAULT 'NO',
-        score INTEGER DEFAULT 0
-    )`);
+    // Initialize database structure
+    db.serialize(() => {
+        // Set pragmas for better performance
+        db.run('PRAGMA journal_mode=WAL');
+        db.run('PRAGMA synchronous=NORMAL');
+        db.run('PRAGMA busy_timeout=5000');
+        
+        // Create table
+        db.run(`CREATE TABLE IF NOT EXISTS tokens (
+            contractAddress TEXT PRIMARY KEY,
+            tokenName TEXT,
+            ticker TEXT,
+            description TEXT,
+            securityScore TEXT,
+            smartMoneyBuys INTEGER DEFAULT 0,
+            earlyTrending TEXT DEFAULT 'NO',
+            hype TEXT DEFAULT 'None',
+            totalCalls INTEGER DEFAULT 0,
+            dexscreenerHot TEXT DEFAULT 'NO',
+            highVolume TEXT DEFAULT 'NO',
+            score INTEGER DEFAULT 0
+        )`);
 
-    // Add trigger to automatically update score when any relevant column changes
-    db.run(`CREATE TRIGGER IF NOT EXISTS update_score 
-        AFTER UPDATE ON tokens
-        FOR EACH ROW
-        BEGIN
-            UPDATE tokens SET score = (
-                CASE 
-                    WHEN NEW.securityScore = 'Bad' THEN -30
-                    WHEN NEW.securityScore = 'Good' THEN 10
-                    ELSE 0
-                END +
-                COALESCE(NEW.smartMoneyBuys * 20, 0) +
-                CASE 
-                    WHEN NEW.earlyTrending = 'YES' THEN 30
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN NEW.hype = 'High' THEN 30
-                    WHEN NEW.hype = 'Medium' THEN 20
-                    WHEN NEW.hype = 'Small' THEN 10
-                    ELSE 0
-                END +
-                COALESCE(NEW.totalCalls * 20, 0) +
-                CASE 
-                    WHEN NEW.dexscreenerHot = 'YES' THEN 20
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN NEW.highVolume = 'YES' THEN 10
-                    ELSE 0
-                END
-            ) WHERE contractAddress = NEW.contractAddress;
-        END;
-    `);
+        // Create trigger for score calculation
+        db.run(`CREATE TRIGGER IF NOT EXISTS update_score 
+            AFTER UPDATE ON tokens
+            FOR EACH ROW
+            BEGIN
+                UPDATE tokens SET score = (
+                    CASE 
+                        WHEN NEW.securityScore = 'Bad' THEN -30
+                        WHEN NEW.securityScore = 'Good' THEN 10
+                        ELSE 0
+                    END +
+                    COALESCE(NEW.smartMoneyBuys * 20, 0) +
+                    CASE 
+                        WHEN NEW.earlyTrending = 'YES' THEN 30
+                        ELSE 0
+                    END +
+                    CASE 
+                        WHEN NEW.hype = 'High' THEN 30
+                        WHEN NEW.hype = 'Medium' THEN 20
+                        WHEN NEW.hype = 'Small' THEN 10
+                        ELSE 0
+                    END +
+                    COALESCE(NEW.totalCalls * 20, 0) +
+                    CASE 
+                        WHEN NEW.dexscreenerHot = 'YES' THEN 20
+                        ELSE 0
+                    END +
+                    CASE 
+                        WHEN NEW.highVolume = 'YES' THEN 10
+                        ELSE 0
+                    END
+                ) WHERE contractAddress = NEW.contractAddress;
+            END;
+        `);
 
-    // Also add trigger for new insertions
-    db.run(`CREATE TRIGGER IF NOT EXISTS initial_score 
-        AFTER INSERT ON tokens
-        FOR EACH ROW
-        BEGIN
-            UPDATE tokens SET score = (
-                CASE 
-                    WHEN NEW.securityScore = 'Bad' THEN -30
-                    WHEN NEW.securityScore = 'Good' THEN 10
-                    ELSE 0
-                END +
-                COALESCE(NEW.smartMoneyBuys * 20, 0) +
-                CASE 
-                    WHEN NEW.earlyTrending = 'YES' THEN 30
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN NEW.hype = 'High' THEN 30
-                    WHEN NEW.hype = 'Medium' THEN 20
-                    WHEN NEW.hype = 'Small' THEN 10
-                    ELSE 0
-                END +
-                COALESCE(NEW.totalCalls * 20, 0) +
-                CASE 
-                    WHEN NEW.dexscreenerHot = 'YES' THEN 20
-                    ELSE 0
-                END +
-                CASE 
-                    WHEN NEW.highVolume = 'YES' THEN 10
-                    ELSE 0
-                END
-            ) WHERE contractAddress = NEW.contractAddress;
-        END;
-    `);
+        // Create trigger for initial score calculation
+        db.run(`CREATE TRIGGER IF NOT EXISTS initial_score 
+            AFTER INSERT ON tokens
+            FOR EACH ROW
+            BEGIN
+                UPDATE tokens SET score = (
+                    CASE 
+                        WHEN NEW.securityScore = 'Bad' THEN -30
+                        WHEN NEW.securityScore = 'Good' THEN 10
+                        ELSE 0
+                    END +
+                    COALESCE(NEW.smartMoneyBuys * 20, 0) +
+                    CASE 
+                        WHEN NEW.earlyTrending = 'YES' THEN 30
+                        ELSE 0
+                    END +
+                    CASE 
+                        WHEN NEW.hype = 'High' THEN 30
+                        WHEN NEW.hype = 'Medium' THEN 20
+                        WHEN NEW.hype = 'Small' THEN 10
+                        ELSE 0
+                    END +
+                    COALESCE(NEW.totalCalls * 20, 0) +
+                    CASE 
+                        WHEN NEW.dexscreenerHot = 'YES' THEN 20
+                        ELSE 0
+                    END +
+                    CASE 
+                        WHEN NEW.highVolume = 'YES' THEN 10
+                        ELSE 0
+                    END
+                ) WHERE contractAddress = NEW.contractAddress;
+            END;
+        `);
+    });
 });
 
 async function processQueue() {
