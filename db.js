@@ -2,7 +2,6 @@ const sqlite3 = require('sqlite3').verbose();
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-const { calculateScore } = require('./scoring');
 
 dotenv.config();
 
@@ -149,29 +148,7 @@ function queueUpdate(query, params) {
     }
 }
 
-// Update the token's score whenever any metric changes
-function updateTokenScore(contractAddress) {
-    db.get(
-        'SELECT * FROM tokens WHERE contractAddress = ?',
-        [contractAddress],
-        (err, token) => {
-            if (err) {
-                console.error('Error fetching token for score update:', err);
-                return;
-            }
-            if (token) {
-                const score = calculateScore(token);
-                queueUpdate(
-                    'UPDATE tokens SET score = ? WHERE contractAddress = ?',
-                    [score, contractAddress]
-                );
-            }
-        }
-    );
-}
-
 module.exports = {
     db,
-    queueUpdate,
-    updateTokenScore
+    queueUpdate
 }; 
