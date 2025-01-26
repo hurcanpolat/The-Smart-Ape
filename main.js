@@ -97,53 +97,48 @@ async function pollChannel(channel) {
     
     try {
         const client = new TelegramClient(stringSession, apiId, apiHash, {
-            connectionRetries: 1,
+            connectionRetries: 5,
             useWSS: false,
-            requestRetries: 1
+            requestRetries: 3
         });
 
-        console.log('\n=== Connecting to Telegram ===');
         await client.connect();
+        console.log('Connected to Telegram');
         
         const isAuthorized = await client.isUserAuthorized();
         console.log('User Authorized:', isAuthorized);
 
         if (!isAuthorized) {
-            throw new Error('Not authorized - session might be invalid');
+            throw new Error('Not authorized');
         }
 
-        // Test basic functionality
-        console.log('\n=== Testing Basic Functionality ===');
-        const me = await client.getMe();
-        console.log('Self User:', me?.username || 'Not found');
+        // Set up polling for all channels
+        Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
+            const pollInterval = 30000;
+            const staggerDelay = index * 2000;
 
-        // Test channel access
-        console.log('\n=== Testing Channel Access ===');
-        try {
-            const entity = await client.getEntity(TEST_CHANNEL);
-            console.log('Channel Info:', {
-                id: entity.id,
-                title: entity.title,
-                username: entity.username
-            });
-
-            // Try to get messages
-            const messages = await client.getMessages(entity, { limit: 1 });
-            console.log('\n=== Message Test ===');
-            console.log('Got Messages:', messages.length);
-            if (messages.length > 0) {
-                console.log('Sample Message:', {
-                    id: messages[0].id,
-                    date: messages[0].date,
-                    textLength: messages[0].text?.length || 0
-                });
-            }
-        } catch (error) {
-            logError('Channel Access', error);
-        }
+            console.log(`Setting up polling for ${chatName}`);
+            
+            setInterval(async () => {
+                try {
+                    const entity = await client.getEntity(chatConfig.id);
+                    const messages = await client.getMessages(entity, { limit: 5 });
+                    
+                    console.log(`Got ${messages.length} messages from ${chatName}`);
+                    
+                    for (const msg of messages) {
+                        if (msg?.text) {
+                            await processMessage(chatName, msg);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error polling ${chatName}:`, error);
+                }
+            }, pollInterval + staggerDelay);
+        });
 
     } catch (error) {
-        logError('Fatal Error', error);
+        console.error('Fatal error:', error);
         process.exit(1);
     }
 })();
