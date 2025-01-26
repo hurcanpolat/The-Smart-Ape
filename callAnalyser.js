@@ -83,6 +83,15 @@ async function processCallAnalyserMessage(message) {
             details.totalCalls
         ]);
         console.log(`Updated call details for ${details.ticker} (${details.contractAddress}): ${details.totalCalls} calls`);
+
+        // Calculate score: 
+        // - Each call is worth 10 points
+        const score = details.totalCalls * 10;
+
+        // Update the token in the database
+        db.run(`
+            UPDATE tokens SET score = ? WHERE contractAddress = ?
+        `, [score, details.contractAddress]);
     } catch (error) {
         console.error('Error processing call details:', error);
     }
