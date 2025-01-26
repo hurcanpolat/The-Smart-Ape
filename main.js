@@ -24,8 +24,26 @@ for (const [channelName, channelConfig] of Object.entries(config.channels)) {
     }
 }
 
+async function processMessage(chatName, message) {
+    if (!message || !message.text) return;
+
+    const chatConfig = config.channels[chatName];
+    if (!chatConfig) return;
+
+    try {
+        const channelProcessor = channelModules[chatName]?.processMessage;
+        if (channelProcessor) {
+            await channelProcessor(message);
+        }
+    } catch (error) {
+        console.error(`Error processing message for ${chatName}:`, error);
+    }
+}
+
 // Client setup
 (async () => {
+    const apiId = parseInt(process.env.TELEGRAM_API_ID);
+    const apiHash = process.env.TELEGRAM_API_HASH;
     const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
 
     try {
