@@ -125,21 +125,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
             FOR EACH ROW
             WHEN NEW.score != OLD.score
             BEGIN
-                UPDATE tokens SET scoreTimeline = json_insert(
-                    COALESCE(OLD.scoreTimeline, '[]'),
-                    '$[' || json_array_length(COALESCE(OLD.scoreTimeline, '[]')) || ']',
-                    json_object(
-                        'time', strftime('%H:%M', 'now', 'localtime'),
-                        'event', CASE
-                            WHEN NEW.securityScore != OLD.securityScore THEN 'Security Score ' || NEW.securityScore
-                            WHEN NEW.earlyTrending != OLD.earlyTrending THEN 'Early Trending'
-                            WHEN NEW.hype != OLD.hype THEN 'Hype ' || NEW.hype
-                            -- Add other cases
-                            ELSE 'Score Update'
-                        END,
-                        'points', NEW.score - OLD.score
+                UPDATE tokens SET scoreTimeline = (
+                    SELECT json(
+                        CASE 
+                            WHEN OLD.scoreTimeline IS NULL THEN '[]'
+                            ELSE OLD.scoreTimeline
+                        END || ' || ' ||
+                        json_array(
+                            json_object(
+                                'time', strftime('%H:%M', 'now', 'localtime'),
+                                'event', CASE
+                                    WHEN NEW.securityScore != OLD.securityScore THEN 'Security Score ' || NEW.securityScore
+                                    WHEN NEW.earlyTrending != OLD.earlyTrending THEN 'Early Trending'
+                                    WHEN NEW.hype != OLD.hype THEN 'Hype ' || NEW.hype
+                                    ELSE 'Score Update'
+                                END,
+                                'points', NEW.score - OLD.score
+                            )
+                        )
                     )
-                ) WHERE contractAddress = NEW.contractAddress;
+                )
+                WHERE contractAddress = NEW.contractAddress;
             END;
         `);
     });
