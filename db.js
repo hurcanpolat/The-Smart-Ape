@@ -1,5 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const dotenv = require('dotenv');
+const fs = require('fs');
+const path = require('path');
 
 dotenv.config();
 
@@ -7,9 +9,21 @@ dotenv.config();
 const updateQueue = [];
 let isProcessing = false;
 
-const db = new sqlite3.Database(process.env.DB_PATH || 'tokens.db', (err) => {
-    if (err) console.error('Database connection error:', err);
-    else console.log('Connected to the database.');
+// Ensure the directory exists
+const dbPath = process.env.DB_PATH || 'tokens.db';
+const dbDir = path.dirname(dbPath);
+
+if (!fs.existsSync(dbDir)) {
+    console.log(`Creating database directory: ${dbDir}`);
+    fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+        console.error('Database connection error:', err);
+        process.exit(1);
+    }
+    console.log(`Connected to the database at ${dbPath}`);
 
     // Initialize database structure
     db.serialize(() => {
