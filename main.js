@@ -75,7 +75,8 @@ async function processMessage(chatName, message) {
                     
                     console.log(`Got ${messages.length} messages from ${chatName}`);
                     
-                    for (const msg of messages) {
+                    // Process messages in chronological order (oldest first)
+                    for (const msg of messages.reverse()) {
                         if (msg?.text) {
                             await processMessage(chatName, msg);
                         }
