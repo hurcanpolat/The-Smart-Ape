@@ -93,20 +93,35 @@ async function pollChannel(channel) {
             useWSS: false,
             deviceModel: 'Desktop',
             systemVersion: 'Windows 10',
-            appVersion: '1.0.0',
-            baseLogger: console
+            appVersion: '1.0.0'
         });
 
         // Modified connection approach
-        await client.connect();
+        await client.start({
+            phoneNumber: async () => '',
+            password: async () => '',
+            onError: (err) => console.error('Connection error:', err),
+            firstAndLastNames: () => Promise.resolve({ firstName: 'Bot', lastName: 'User' })
+        });
+        
         console.log('Connected to Telegram');
 
         // Test a simple API call
         try {
             const me = await client.getMe();
             console.log('Successfully got self user:', me.username);
+
+            // Get dialogs to ensure we have access
+            const dialogs = await client.getDialogs({});
+            console.log('Successfully got dialogs, count:', dialogs.length);
+
+            // Log some dialog names
+            dialogs.forEach(dialog => {
+                console.log('Dialog:', dialog.title || dialog.name || 'Unknown');
+            });
+
         } catch (error) {
-            console.error('Failed to get self user:', error);
+            console.error('Failed to get self user or dialogs:', error);
             process.exit(1);
         }
 
@@ -116,11 +131,10 @@ async function pollChannel(channel) {
                 console.log(`\nTesting ${chatName}...`);
                 
                 // Try to resolve the channel username first
-                const channelId = chatConfig.id.startsWith('@') ? 
-                    chatConfig.id.substring(1) : chatConfig.id;
+                const channelId = chatConfig.id;
                 
                 console.log(`Resolving ${channelId}...`);
-                const entity = await client.getInputEntity(channelId);
+                const entity = await client.getEntity(channelId);
                 console.log(`Resolved ${chatName} to:`, entity);
 
                 // Try to get messages
@@ -131,7 +145,7 @@ async function pollChannel(channel) {
                     console.log('Sample message:', messages[0].text?.substring(0, 100));
                 }
             } catch (error) {
-                console.error(`Failed to access ${chatName}:`, error);
+                console.error(`Failed to access ${chatName}:`, error.message);
             }
         }
 
