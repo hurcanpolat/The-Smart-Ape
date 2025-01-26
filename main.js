@@ -81,10 +81,15 @@ async function pollChannel(channel) {
         const client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
             retryDelay: 2000,
-            useWSS: true,
-            logger: console
+            useWSS: false,
+            maxConcurrentDownloads: 1,
+            deviceModel: 'Desktop',
+            systemVersion: 'Windows 10',
+            appVersion: '1.0.0',
+            baseLogger: console
         });
 
+        console.log('Attempting to connect...');
         await client.connect();
         console.log('Initial connection successful');
 
@@ -97,25 +102,45 @@ async function pollChannel(channel) {
         }
 
         // Test channel access
+        console.log('\n=== Testing Channel Access ===');
         for (const [chatName, chatConfig] of Object.entries(config.channels)) {
             try {
-                console.log(`Testing access to ${chatName} (${chatConfig.id})`);
+                console.log(`\nTesting access to ${chatName} (${chatConfig.id})`);
                 const entity = await client.getEntity(chatConfig.id);
+                if (!entity) {
+                    throw new Error('Entity not found');
+                }
                 console.log(`Successfully accessed ${chatName}:`, entity.id);
+                
+                // Test message fetch
+                const testMessages = await client.getMessages(entity, { limit: 1 });
+                console.log(`Test message fetch for ${chatName}: ${testMessages.length > 0 ? 'Success' : 'No messages'}`);
             } catch (error) {
                 logError(`Failed to access channel ${chatName}`, error);
             }
         }
 
-        // Modified polling setup
+        // Modified polling setup with better error handling
         Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
             const pollInterval = 30000;
             const staggerDelay = index * 2000;
 
+            console.log(`Setting up polling for ${chatName} with interval: ${pollInterval + staggerDelay}ms`);
+
             setInterval(async () => {
                 try {
+                    if (!client.connected) {
+                        console.log('Client disconnected, attempting to reconnect...');
+                        await client.connect();
+                    }
+
                     console.log(`\n=== Polling ${chatName} ===`);
-                    const messages = await client.getMessages(chatConfig.id, { 
+                    const entity = await client.getEntity(chatConfig.id);
+                    if (!entity) {
+                        throw new Error(`Could not get entity for ${chatName}`);
+                    }
+
+                    const messages = await client.getMessages(entity, { 
                         limit: 5,
                         offsetId: 0
                     });
