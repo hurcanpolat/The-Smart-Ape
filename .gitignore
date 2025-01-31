@@ -3,3 +3,6 @@ node_modules/
 *.db
 *.db-journal
 processedMessageIds.json .env
+.DS_Store
+tokens.db*
+processedMessageIds.json
