@@ -1,7 +1,8 @@
 const { queueUpdate } = require('./db');
 const { getAllUrls, extractContractAddress } = require('./utils');
 
-const processedAddresses = new Set();
+// Change to track token+wallet combinations
+const processedTransactions = new Set();
 
 function extractTokenDetails(message) {
     const text = message.text || '';
@@ -46,12 +47,17 @@ async function processWalletTrackerMessage(message) {
   
     if (tokenDetails.length === 0) return;
 
-    for (const { tokenAddress, symbol } of tokenDetails) {
+    for (const { tokenAddress, recipient, symbol } of tokenDetails) {
         if (!tokenAddress) continue;
 
-        if (processedAddresses.has(tokenAddress)) continue;
+        // Create unique key for this token+wallet combination
+        const transactionKey = `${tokenAddress}-${recipient}`;
 
-        processedAddresses.add(tokenAddress);
+        // Skip if we've already processed this exact transaction
+        if (processedTransactions.has(transactionKey)) continue;
+
+        // Mark this transaction as processed
+        processedTransactions.add(transactionKey);
   
         const query = `
             INSERT INTO tokens (contractAddress, smartMoneyBuys)
@@ -61,7 +67,7 @@ async function processWalletTrackerMessage(message) {
         `;
         try {
             await queueUpdate(query, [tokenAddress]);
-            console.log(`Updated smartMoneyBuys for token ${symbol} (${tokenAddress})`);
+            console.log(`Updated smartMoneyBuys for token ${symbol} (${tokenAddress}) - bought by ${recipient}`);
         } catch (error) {
             console.error('Error processing wallet tracker:', error);
         }
