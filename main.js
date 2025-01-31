@@ -69,13 +69,7 @@ async function connectClient() {
         console.log('Initializing client...');
         client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
-            useWSS: true,
-            requestRetries: 3,
-            retry_delay: 1000,
-            connection: {
-                timeout: 30000, // Increase timeout
-                retries: 5
-            }
+            useWSS: false
         });
 
         console.log('Connecting to Telegram...');
