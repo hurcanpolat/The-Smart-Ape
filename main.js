@@ -8,6 +8,7 @@ const processedMessageIdsFile = 'processedMessageIds.json';
 const { db } = require('./db');
 const http = require('http');
 const https = require('https');
+const { sleep } = require('telegram/Helpers');
 
 dotenv.config();
 
@@ -41,53 +42,104 @@ async function processMessage(chatName, message) {
     }
 }
 
-// Client setup
-(async () => {
-    const apiId = parseInt(process.env.TELEGRAM_API_ID);
-    const apiHash = process.env.TELEGRAM_API_HASH;
-    const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
+// Add connection management
+let client = null;
+let isConnecting = false;
+
+async function connectClient() {
+    if (isConnecting) return;
+    isConnecting = true;
 
     try {
-        const client = new TelegramClient(stringSession, apiId, apiHash, {
+        // Add initial delay to allow previous instances to timeout
+        await sleep(10000); // 10 second delay
+
+        if (client) {
+            try {
+                await client.disconnect();
+            } catch (err) {
+                console.log('Error disconnecting existing client:', err.message);
+            }
+        }
+
+        const apiId = parseInt(process.env.TELEGRAM_API_ID);
+        const apiHash = process.env.TELEGRAM_API_HASH;
+        const isProd = process.env.NODE_ENV === 'production';
+        const stringSession = new StringSession(
+            isProd ? process.env.TELEGRAM_STRING_SESSION_PROD : process.env.TELEGRAM_STRING_SESSION_DEV
+        );
+
+        client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
             useWSS: false,
-            requestRetries: 3
+            requestRetries: 3,
+            retry_delay: 1000
         });
 
         await client.connect();
-
+        
         const isAuthorized = await client.isUserAuthorized();
-
         if (!isAuthorized) {
             throw new Error('Not authorized');
         }
 
-        // Set up polling for all channels
-        Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
-            const pollInterval = 30000;
-            const staggerDelay = index * 2000;
+        console.log('Successfully connected to Telegram');
+        
+        // Set up polling with retry mechanism
+        setupPolling();
 
-            console.log(`Setting up polling for ${chatName}`);
-            
-            setInterval(async () => {
-                try {
-                    const entity = await client.getEntity(chatConfig.id);
-                    const messages = await client.getMessages(entity, { limit: 5 });
-                    
-                    console.log(`Got ${messages.length} messages from ${chatName}`);
-                    
-                    // Process messages in chronological order (oldest first)
-                    for (const msg of [...messages].reverse()) {
-                        if (msg?.text) {
-                            await processMessage(chatName, msg);
-                        }
+    } catch (error) {
+        console.error('Connection error:', error);
+        // Wait before trying to reconnect
+        await sleep(5000);
+        isConnecting = false;
+        return connectClient();
+    }
+
+    isConnecting = false;
+}
+
+async function setupPolling() {
+    Object.entries(config.channels).forEach(([chatName, chatConfig], index) => {
+        const pollInterval = 30000;
+        const staggerDelay = index * 2000;
+
+        console.log(`Setting up polling for ${chatName}`);
+        
+        let isPolling = false;
+        
+        setInterval(async () => {
+            if (isPolling) return;
+            isPolling = true;
+
+            try {
+                const entity = await client.getEntity(chatConfig.id);
+                const messages = await client.getMessages(entity, { limit: 5 });
+                
+                console.log(`Got ${messages.length} messages from ${chatName}`);
+                
+                for (const msg of [...messages].reverse()) {
+                    if (msg?.text) {
+                        await processMessage(chatName, msg);
                     }
-                } catch (error) {
-                    console.error(`Error polling ${chatName}:`, error);
                 }
-            }, pollInterval + staggerDelay);
-        });
+            } catch (error) {
+                console.error(`Error polling ${chatName}:`, error);
+                if (error.message.includes('AUTH_KEY_DUPLICATED')) {
+                    // Reconnect if we get an auth key error
+                    await connectClient();
+                }
+            } finally {
+                isPolling = false;
+            }
+        }, pollInterval + staggerDelay);
+    });
+}
 
+// Modify the main execution
+(async () => {
+    try {
+        await connectClient();
     } catch (error) {
         console.error('Fatal error:', error);
         process.exit(1);
@@ -95,14 +147,23 @@ async function processMessage(chatName, message) {
 })();
 
 // Cleanup on exit
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
+    console.log('Closing connections...');
+    if (client) {
+        try {
+            await client.disconnect();
+        } catch (err) {
+            console.error('Error disconnecting client:', err);
+        }
+    }
+    
     console.log('Closing database connection...');
     db.close((err) => {
         if (err) {
             console.error('Error closing database:', err);
             process.exit(1);
         }
-        console.log('Database connection closed.');
+        console.log('Cleanup complete.');
         process.exit(0);
     });
 });
