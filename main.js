@@ -64,23 +64,30 @@ async function connectClient() {
 
         const apiId = parseInt(process.env.TELEGRAM_API_ID);
         const apiHash = process.env.TELEGRAM_API_HASH;
-        const isProd = process.env.NODE_ENV === 'production';
-        const stringSession = new StringSession(
-            isProd ? process.env.TELEGRAM_STRING_SESSION_PROD : process.env.TELEGRAM_STRING_SESSION_DEV
-        );
+        const stringSession = new StringSession(process.env.TELEGRAM_STRING_SESSION || '');
 
+        console.log('Initializing client...');
         client = new TelegramClient(stringSession, apiId, apiHash, {
             connectionRetries: 5,
-            useWSS: false,
+            useWSS: true,
             requestRetries: 3,
-            retry_delay: 1000
+            retry_delay: 1000,
+            connection: {
+                timeout: 30000, // Increase timeout
+                retries: 5
+            }
         });
 
+        console.log('Connecting to Telegram...');
         await client.connect();
         
+        console.log('Checking authorization...');
         const isAuthorized = await client.isUserAuthorized();
         if (!isAuthorized) {
-            throw new Error('Not authorized');
+            console.error('Session string:', process.env.TELEGRAM_STRING_SESSION ? 'Present' : 'Missing');
+            console.error('API ID:', apiId);
+            console.error('API Hash:', apiHash ? 'Present' : 'Missing');
+            throw new Error('Not authorized - check credentials');
         }
 
         console.log('Successfully connected to Telegram');
